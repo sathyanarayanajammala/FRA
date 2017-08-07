@@ -10,6 +10,8 @@ output: html_document
 ```{r}
 
 library(DMwR)
+library(InformationValue)
+library(ROCR)
 
 ```
 ### Read Test and Training Data
@@ -38,13 +40,15 @@ testdata<-na.omit(testdata)
 trainingdata$Casenum<-NULL
 testdata$Casenum<-NULL  
   table(trainingdata$SeriousDlqin2yrs)
+  table(testdata$SeriousDlqin2yrs)
 
 ```
 ### Un balanced data is observed from above table
-### using SMOTE and ROSE we need to do the data balancing
+### using SMOTE we need to do the data balancing for train data
 ```{r}
-str(trainingdata)
+
 trainingdata$SeriousDlqin2yrs<-as.factor(trainingdata$SeriousDlqin2yrs)
+testdata$SeriousDlqin2yrs<-as.factor(testdata$SeriousDlqin2yrs)
 trainingDataSMOTE<- SMOTE(SeriousDlqin2yrs~.,trainingdata,perc.over = 500)
 
 
@@ -54,6 +58,7 @@ trainingDataSMOTE<- SMOTE(SeriousDlqin2yrs~.,trainingdata,perc.over = 500)
 
 ```{r}
 table(trainingDataSMOTE$SeriousDlqin2yrs)
+
 
 ```
 
@@ -70,14 +75,32 @@ summary(logit)
 ```{r}
     
 predictTestDataProbility<-predict(logit,newdata=testdata,type="response")
-predictTestOutcome<-predictTestDataProbility >0.5
-str(predictTestOutcome)
+
 ```
 ### Build the confusion Matrix
 ### Compare actual decisions with predictions
 ```{r}
-    confusionMatrix <- table(testdata$SeriousDlqin2yrs,predictTestOutcome)
-    confusionMatrix
+    
+optCutOff <- optimalCutoff(testdata$SeriousDlqin2yrs, predictTestDataProbility)[1] 
+
+confusionMatrix <- confusionMatrix(testdata$SeriousDlqin2yrs,predictTestDataProbility,optCutOff)
+confusionMatrix
+    
+    
+
+
+```
+### Miss Classification Error
+```{r}
+misClassError(testdata$SeriousDlqin2yrs, predictTestDataProbility, threshold = optCutOff)
+
+```
+#### Lower the misclassification error, the better is the model
+
+### ROC
+```{r}
+
+plotROC(testdata$SeriousDlqin2yrs,predictTestDataProbility)
 
 ```
 
