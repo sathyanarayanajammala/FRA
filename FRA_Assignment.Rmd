@@ -1,0 +1,83 @@
+---
+title: "FRA Assignment"
+author: "Satya"
+date: "August 7, 2017"
+output: html_document
+---
+
+### Load libraries
+
+```{r}
+
+library(DMwR)
+
+```
+### Read Test and Training Data
+
+```{r}
+setwd("H:\\GreatLakes\\off campus assignment\\off campus assignment")
+traingsrcdata<-read.csv("training.csv")
+testingsrcdata<-read.csv("test.csv")
+
+trainingdata<-traingsrcdata
+testdata<-testingsrcdata
+
+```
+### Clean the data. Out of 5000 records 142 are NA's in training data. so removing NA's
+### Out of 1000 records 20 are NA's.in testing data. So removing NA's
+```{r}
+summary(trainingdata)
+summary(testdata)
+trainingdata<-na.omit(trainingdata)
+testdata<-na.omit(testdata)
+
+
+```
+### Checking the data Issues
+```{r}
+trainingdata$Casenum<-NULL
+testdata$Casenum<-NULL  
+  table(trainingdata$SeriousDlqin2yrs)
+
+```
+### Un balanced data is observed from above table
+### using SMOTE and ROSE we need to do the data balancing
+```{r}
+str(trainingdata)
+trainingdata$SeriousDlqin2yrs<-as.factor(trainingdata$SeriousDlqin2yrs)
+trainingDataSMOTE<- SMOTE(SeriousDlqin2yrs~.,trainingdata,perc.over = 500)
+
+
+```
+
+### SMOTE Data Balance after executing SMOTE function
+
+```{r}
+table(trainingDataSMOTE$SeriousDlqin2yrs)
+
+```
+
+## Logistic regression Modeling
+```{r}
+
+logit<- glm(trainingDataSMOTE$SeriousDlqin2yrs~.,data = trainingDataSMOTE,family = binomial)
+
+summary(logit)
+
+```
+### Make the preditcitons using predict function
+
+```{r}
+    
+predictTestDataProbility<-predict(logit,newdata=testdata,type="response")
+predictTestOutcome<-predictTestDataProbility >0.5
+str(predictTestOutcome)
+```
+### Build the confusion Matrix
+### Compare actual decisions with predictions
+```{r}
+    confusionMatrix <- table(testdata$SeriousDlqin2yrs,predictTestOutcome)
+    confusionMatrix
+
+```
+
