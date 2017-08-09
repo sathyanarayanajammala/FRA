@@ -12,8 +12,11 @@ output: html_document
 library(DMwR)
 library(InformationValue)
 library(ROCR)
-
+library(ROSE)
+library(party)
+library(rpart)
 ```
+
 ### Read Test and Training Data
 
 ```{r}
@@ -25,6 +28,7 @@ trainingdata<-traingsrcdata
 testdata<-testingsrcdata
 
 ```
+
 ### Clean the data. Out of 5000 records 142 are NA's in training data. so removing NA's
 ### Out of 1000 records 20 are NA's.in testing data. So removing NA's
 ```{r}
@@ -35,6 +39,7 @@ testdata<-na.omit(testdata)
 
 
 ```
+
 ### Checking the data Issues
 ```{r}
 trainingdata$Casenum<-NULL
@@ -43,21 +48,22 @@ testdata$Casenum<-NULL
   table(testdata$SeriousDlqin2yrs)
 
 ```
+
 ### Un balanced data is observed from above table
-### using SMOTE we need to do the data balancing for train data
+### using ROSE we need to do the data balancing for train data
 ```{r}
 
 trainingdata$SeriousDlqin2yrs<-as.factor(trainingdata$SeriousDlqin2yrs)
 testdata$SeriousDlqin2yrs<-as.factor(testdata$SeriousDlqin2yrs)
-trainingDataSMOTE<- SMOTE(SeriousDlqin2yrs~.,trainingdata,perc.over = 500)
-
+#trainingDataBalanced<- SMOTE(SeriousDlqin2yrs~.,trainingdata,perc.over = 800)
+trainingDataBalanced<- ROSE(SeriousDlqin2yrs~.,trainingdata,seed = 1253)$data
 
 ```
 
-### SMOTE Data Balance after executing SMOTE function
+### ROSE Data Balance after executing ROSE function
 
 ```{r}
-table(trainingDataSMOTE$SeriousDlqin2yrs)
+table(trainingDataBalanced$SeriousDlqin2yrs)
 
 
 ```
@@ -65,11 +71,12 @@ table(trainingDataSMOTE$SeriousDlqin2yrs)
 ## Logistic regression Modeling
 ```{r}
 
-logit<- glm(trainingDataSMOTE$SeriousDlqin2yrs~.,data = trainingDataSMOTE,family = binomial)
+logit<- glm(SeriousDlqin2yrs~.,data = trainingDataBalanced,family = binomial)
 
 summary(logit)
 
 ```
+
 ### Make the preditcitons using predict function
 
 ```{r}
@@ -77,6 +84,7 @@ summary(logit)
 predictTestDataProbility<-predict(logit,newdata=testdata,type="response")
 
 ```
+
 ### Build the confusion Matrix
 ### Compare actual decisions with predictions
 ```{r}
@@ -85,22 +93,48 @@ optCutOff <- optimalCutoff(testdata$SeriousDlqin2yrs, predictTestDataProbility)[
 
 confusionMatrix <- confusionMatrix(testdata$SeriousDlqin2yrs,predictTestDataProbility,optCutOff)
 confusionMatrix
-    
-    
 
 
 ```
+
 ### Miss Classification Error
 ```{r}
 misClassError(testdata$SeriousDlqin2yrs, predictTestDataProbility, threshold = optCutOff)
 
 ```
+
 #### Lower the misclassification error, the better is the model
 
 ### ROC
 ```{r}
 
+
 plotROC(testdata$SeriousDlqin2yrs,predictTestDataProbility)
 
 ```
 
+### Decision Trees Modeling
+```{r}
+library(rattle)				
+library(rpart.plot)	
+tree <- rpart(SeriousDlqin2yrs~.,method="class", data=trainingDataBalanced)
+
+summary(tree) # detailed summary of splits
+
+title<-"Classification Tree"
+  # plot tree 
+  rpart.plot(tree, uniform=TRUE,main=title)
+
+```
+
+### Make the preditcitons using predict function
+
+```{r}
+
+predict<-predict(tree,data=testdata)
+
+predict
+
+#table()
+
+```
